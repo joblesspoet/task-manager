@@ -1,20 +1,41 @@
 import React, {createContext, useState, useEffect} from 'react'
 import {v1 as uuid} from 'uuid'
+import DB from '../helpers/db';
 
 export const TaskListContext = createContext();
+const db = new DB('tasks');
 
-const TaskListContextProvider = props => {
-    
-    const initialState = JSON.parse(localStorage.getItem('tasks')) || []
-    const [tasks, setTasks] = useState(initialState);
+
+
+const TaskListContextProvider = ({children}) => {
+
+    const [tasks, setTasks] = useState([]);
     const [editItem, setEditItem] = useState(null);
-    
-    useEffect(() => {
-        localStorage.setItem('tasks', JSON.stringify(tasks))
-      }, [tasks])
+   
+    // console.log(tasks);
+    useEffect(() => {    
+        async function fetchData() {
+            let tasksArray = await db.getAllDocuments();
+            try {
+                setTasks(tasksArray)
+            } catch(error) {
+                console.log('Error....',error)
+            }
 
-    const addTask = (title) => {
-        setTasks([...tasks, { title, id: uuid() }])
+        }
+        fetchData();
+      }, [])
+
+      useEffect(() => {
+        console.log('when tasks',tasks);
+      },[tasks])
+
+    const addTask = async (title) => {
+        const data = { title, id: uuid(), _id: uuid()};
+        const item = await db.addUpdateDocument(data);
+        console.log(item);
+        data.rev = item.rev;
+        setTasks([...tasks, data]);
     }
 
     const removeTask = id => {
@@ -44,7 +65,7 @@ const TaskListContextProvider = props => {
     }
 
     return <TaskListContext.Provider value={{ tasks, addTask, removeTask, clearTasks, editTask , editItem, updateTask, resetSelected }} >
-        { props.children }
+        { children }
     </TaskListContext.Provider>
 }
 
